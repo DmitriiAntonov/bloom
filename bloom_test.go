@@ -2,6 +2,7 @@ package bloom
 
 import (
 	"encoding/binary"
+	"os"
 	"testing"
 )
 
@@ -71,4 +72,57 @@ func TestUint32(t *testing.T) {
 	if got := filter.Contains(x5); got {
 		t.Errorf("Contains(%b) want %t, got %t", x5, false, got)
 	}
+}
+
+func TestPersistence(t *testing.T) {
+	x1, x2, x3, x4 := "cfkuouhbuq", "cawakensvd", "wtpyceapwn", "ehnfcuxuqu"
+
+	filter := New(100, 0.01)
+
+	filter.Add([]byte(x1))
+	filter.Add([]byte(x2))
+	filter.Add([]byte(x3))
+	filter.Add([]byte(x4))
+
+	file, _ := os.Create("bloom.bin")
+
+	n, err := filter.WriteTo(file)
+
+	wantSize := 60
+
+	if err != nil || int64(wantSize) != n {
+		t.Errorf("WriteTo(file) want = %d, null, got %d, %s", wantSize, n, err)
+	}
+
+	_ = file.Close()
+
+	filter = &Bloom{}
+
+	file, _ = os.Open("bloom.bin")
+
+	n, err = filter.ReadFrom(file)
+
+	if err != nil || int64(wantSize) != n {
+		t.Errorf("ReadFrom(file) want = %d, null, got %d, %s", wantSize, n, err)
+	}
+
+	_ = file.Close()
+
+	if got := filter.Contains([]byte(x1)); !got {
+		t.Errorf("Contains(%b) want %t, got %t", []byte(x1), true, got)
+	}
+
+	if got := filter.Contains([]byte(x2)); !got {
+		t.Errorf("Contains(%b) want %t, got %t", []byte(x2), true, got)
+	}
+
+	if got := filter.Contains([]byte(x3)); !got {
+		t.Errorf("Contains(%b) want %t, got %t", []byte(x3), true, got)
+	}
+
+	if got := filter.Contains([]byte(x4)); !got {
+		t.Errorf("Contains(%b) want %t, got %t", []byte(x4), true, got)
+	}
+
+	_ = os.Remove("bloom.bin")
 }
