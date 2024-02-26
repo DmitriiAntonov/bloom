@@ -1,94 +1,83 @@
 package bloom
 
 import (
-	"encoding/binary"
+	"math/rand"
 	"os"
 	"testing"
 )
 
 func TestString(t *testing.T) {
-	x1, x2, x3, x4, x5 := "cfkuouhbuq", "cawakensvd", "wtpyceapwn", "ehnfcuxuqu", "zxfinprwoo"
+	keys := make([][]byte, 1000)
 
-	filter := New(100, 0.01)
-
-	filter.Add([]byte(x1))
-	filter.Add([]byte(x2))
-	filter.Add([]byte(x3))
-	filter.Add([]byte(x4))
-
-	if got := filter.Contains([]byte(x1)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x1), true, got)
+	for i := 0; i < len(keys); i++ {
+		keys[i] = randBytes(10)
 	}
 
-	if got := filter.Contains([]byte(x2)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x1), true, got)
+	filter := New(10000, 0.001)
+
+	for i := 0; i < len(keys); i++ {
+		filter.Add(keys[i])
 	}
 
-	if got := filter.Contains([]byte(x3)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x1), true, got)
-	}
-
-	if got := filter.Contains([]byte(x4)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x1), true, got)
-	}
-
-	if got := filter.Contains([]byte(x5)); got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x5), false, got)
+	for i := 0; i < len(keys); i++ {
+		if got := filter.Contains(keys[i]); !got {
+			t.Errorf("Contains(%b) want %t, got %t", keys[i], true, got)
+		}
 	}
 }
 
 func TestUint32(t *testing.T) {
-	x1, x2, x3, x4, x5 := make([]byte, 4), make([]byte, 4), make([]byte, 4), make([]byte, 4), make([]byte, 4)
+	keys := make([][]byte, 1000)
 
-	binary.BigEndian.PutUint32(x1, 100)
-	binary.BigEndian.PutUint32(x2, 101)
-	binary.BigEndian.PutUint32(x3, 102)
-	binary.BigEndian.PutUint32(x4, 103)
-	binary.BigEndian.PutUint32(x5, 104)
+	for i := 0; i < len(keys); i++ {
+		x := rand.Uint32()
+		key := make([]byte, 4)
+		key[0] = byte(x)
+		key[1] = byte(x >> 8)
+		key[2] = byte(x >> 16)
+		key[3] = byte(x >> 24)
 
-	filter := New(100, 0.01)
-
-	filter.Add(x1)
-	filter.Add(x2)
-	filter.Add(x3)
-	filter.Add(x4)
-
-	if got := filter.Contains(x1); !got {
-		t.Errorf("Contains(%b) want %t, got %t", x1, true, got)
+		keys[i] = key
 	}
 
-	if got := filter.Contains(x2); !got {
-		t.Errorf("Contains(%b) want %t, got %t", x2, true, got)
+	filter := New(10000, 0.001)
+
+	for i := 0; i < len(keys); i++ {
+		filter.Add(keys[i])
 	}
 
-	if got := filter.Contains(x3); !got {
-		t.Errorf("Contains(%b) want %t, got %t", x3, true, got)
-	}
-
-	if got := filter.Contains(x4); !got {
-		t.Errorf("Contains(%b) want %t, got %t", x4, true, got)
-	}
-
-	if got := filter.Contains(x5); got {
-		t.Errorf("Contains(%b) want %t, got %t", x5, false, got)
+	for i := 0; i < len(keys); i++ {
+		if got := filter.Contains(keys[i]); !got {
+			t.Errorf("Contains(%b) want %t, got %t", keys[i], true, got)
+		}
 	}
 }
 
 func TestPersistence(t *testing.T) {
-	x1, x2, x3, x4 := "cfkuouhbuq", "cawakensvd", "wtpyceapwn", "ehnfcuxuqu"
+	keys := make([][]byte, 1000)
 
-	filter := New(100, 0.01)
+	for i := 0; i < len(keys); i++ {
+		keys[i] = randBytes(10)
+	}
 
-	filter.Add([]byte(x1))
-	filter.Add([]byte(x2))
-	filter.Add([]byte(x3))
-	filter.Add([]byte(x4))
+	filter := New(10000, 0.0001)
 
-	file, _ := os.Create("bloom.bin")
+	for i := 0; i < len(keys); i++ {
+		filter.Add(keys[i])
+	}
+
+	bitsetLen := int(filter.m)
+
+	for i := 0; i < len(keys); i++ {
+		filter.Add(keys[i])
+	}
+
+	filename := "bloom.bin"
+	file, _ := os.Create(filename)
 
 	n, err := filter.WriteTo(file)
 
-	wantSize := 60
+	wantSize := 4 + 4 + (bitsetLen+(bitsetLen%8))/8
 
 	if err != nil || int64(wantSize) != n {
 		t.Errorf("WriteTo(file) want = %d, null, got %d, %s", wantSize, n, err)
@@ -98,7 +87,7 @@ func TestPersistence(t *testing.T) {
 
 	filter = &Bloom{}
 
-	file, _ = os.Open("bloom.bin")
+	file, _ = os.Open(filename)
 
 	n, err = filter.ReadFrom(file)
 
@@ -108,21 +97,58 @@ func TestPersistence(t *testing.T) {
 
 	_ = file.Close()
 
-	if got := filter.Contains([]byte(x1)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x1), true, got)
+	for i := 0; i < len(keys); i++ {
+		if got := filter.Contains(keys[i]); !got {
+			t.Errorf("Contains(%b) want %t, got %t", keys[i], true, got)
+		}
 	}
 
-	if got := filter.Contains([]byte(x2)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x2), true, got)
+	_ = os.Remove(filename)
+}
+
+func TestUnion(t *testing.T) {
+	keys1 := make([][]byte, 1000)
+	keys2 := make([][]byte, 500)
+
+	for i := 0; i < len(keys1); i++ {
+		keys1[i] = randBytes(10)
 	}
 
-	if got := filter.Contains([]byte(x3)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x3), true, got)
+	for i := 0; i < len(keys2); i++ {
+		keys2[i] = randBytes(10)
 	}
 
-	if got := filter.Contains([]byte(x4)); !got {
-		t.Errorf("Contains(%b) want %t, got %t", []byte(x4), true, got)
+	filter1, filter2 := New(10000, 0.0001), New(10000, 0.0001)
+
+	for i := 0; i < len(keys1); i++ {
+		filter1.Add(keys1[i])
 	}
 
-	_ = os.Remove("bloom.bin")
+	for i := 0; i < len(keys2); i++ {
+		filter2.Add(keys2[i])
+	}
+
+	_ = filter1.Union(filter2)
+
+	for i := 0; i < len(keys1); i++ {
+		if got := filter1.Contains(keys1[i]); !got {
+			t.Errorf("Contains(%b) want %t, got %t", keys1[i], true, got)
+		}
+	}
+
+	for i := 0; i < len(keys2); i++ {
+		if got := filter1.Contains(keys2[i]); !got {
+			t.Errorf("Contains(%b) want %t, got %t", keys2[i], true, got)
+		}
+	}
+}
+
+func randBytes(n int) []byte {
+	buf := make([]byte, n)
+
+	for i := 0; i < n; i++ {
+		buf[i] = byte(rand.Int31n(255))
+	}
+
+	return buf
 }
