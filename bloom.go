@@ -164,7 +164,7 @@ func (b *Bloom) ReadFrom(r io.Reader) (n int64, err error) {
 	err = binary.Read(r, binary.LittleEndian, &m)
 
 	if err != nil {
-		return 0, fmt.Errorf("an error %s occured while reading length of bitset", err)
+		return 0, fmt.Errorf("an error %s occurred while reading length of bitset", err)
 	}
 
 	n += 4
