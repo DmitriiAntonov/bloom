@@ -15,6 +15,7 @@ const (
 	buffSize int = 64
 )
 
+// Bloom is an implementation of bloom filter
 type Bloom struct {
 	m      uint32        // m is size of bitset
 	k      uint32        // k is number of hash functions
@@ -89,18 +90,18 @@ func (b *Bloom) WriteTo(w io.Writer) (n int64, err error) {
 	m := b.m
 
 	if err = binary.Write(w, binary.LittleEndian, &m); err != nil {
-		return 0, errors.New(fmt.Sprintf("an error %s occurred while writing size of bitset", err))
-	} else {
-		n += 4
+		return 0, fmt.Errorf("an error %s occurred while writing size of bitset", err)
 	}
+
+	n += 4
 
 	k := b.k
 
 	if err = binary.Write(w, binary.LittleEndian, &k); err != nil {
-		return 0, errors.New(fmt.Sprintf("an error %s occurred while writing number of hash functions", err))
-	} else {
-		n += 4
+		return 0, fmt.Errorf("an error %s occurred while writing number of hash functions", err)
 	}
+
+	n += 4
 
 	i := 0
 	buff := bufio.NewWriterSize(w, buffSize)
@@ -118,7 +119,7 @@ func (b *Bloom) WriteTo(w io.Writer) (n int64, err error) {
 		err = buff.WriteByte(block)
 
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("an error %s occurred while writing bitset", err))
+			return 0, fmt.Errorf("an error %s occurred while writing bitset", err)
 		}
 
 		n++
@@ -140,7 +141,7 @@ func (b *Bloom) WriteTo(w io.Writer) (n int64, err error) {
 		err = buff.WriteByte(block)
 
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("an error %s occurred while writing bitset", err))
+			return 0, fmt.Errorf("an error %s occurred while writing bitset", err)
 		}
 
 		n++
@@ -150,7 +151,7 @@ func (b *Bloom) WriteTo(w io.Writer) (n int64, err error) {
 		err = buff.Flush()
 
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("an error %s occurred while writing bitset", err))
+			return 0, fmt.Errorf("an error %s occurred while writing bitset", err)
 		}
 	}
 
@@ -163,7 +164,7 @@ func (b *Bloom) ReadFrom(r io.Reader) (n int64, err error) {
 	err = binary.Read(r, binary.LittleEndian, &m)
 
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("an error %s occured while reading length of bitset", err))
+		return 0, fmt.Errorf("an error %s occured while reading length of bitset", err)
 	}
 
 	n += 4
@@ -172,7 +173,7 @@ func (b *Bloom) ReadFrom(r io.Reader) (n int64, err error) {
 	err = binary.Read(r, binary.LittleEndian, &k)
 
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("an error %s occurred while reading a number of hash functions", err))
+		return 0, fmt.Errorf("an error %s occurred while reading a number of hash functions", err)
 	}
 
 	n += 4
@@ -194,7 +195,7 @@ func (b *Bloom) ReadFrom(r io.Reader) (n int64, err error) {
 			if err == io.EOF {
 				break
 			} else {
-				return 0, errors.New(fmt.Sprintf("an error %s occurred while reading bitset", err))
+				return 0, fmt.Errorf("an error %s occurred while reading bitset", err)
 			}
 		}
 

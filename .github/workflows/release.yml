@@ -22,6 +22,27 @@ jobs:
           go-version: 1.22
         id: go
 
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run staticcheck
+        run: staticcheck ./...
+
+      - name: Install golint
+        run: go install golang.org/x/lint/golint@latest
+
+      - name: Run golint
+        run: golint ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v -cover ./...
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:

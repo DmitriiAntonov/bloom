@@ -23,6 +23,7 @@ type digest32 struct {
 	tail []byte
 }
 
+// New32WithSeed creates a new murmur32 hash with the seed
 func New32WithSeed(seed uint32) hash.Hash32 {
 	d := &digest32{seed: seed}
 	d.Reset()
